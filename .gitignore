@@ -1,0 +1,9 @@
+.idea/
+.terraform/
+.venv/
+*.iml
+*.plan
+*.zip
+*.tmp
+.DS_Store
+.vscode/
