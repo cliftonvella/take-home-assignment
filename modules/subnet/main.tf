@@ -54,22 +54,9 @@ resource "aws_nat_gateway" "outbound" {
   }
 }
 
-# is subnet for a firewall?  In which case a lot more is required
-module "firewall" {
-  source = "../firewall"
-  count  = var.firewall_type == "none" ? 0 : 1
-
-  az_count          = var.az_count
-  name              = var.name
-  subnets           = aws_subnet.this
-  vpc               = var.vpc
-  internet_gateway  = var.internet_gateway
-  protected_subnets = var.protected_subnets
-}
-
-# To internet is there's no firewall
+# To internet if required
 resource "aws_route_table" "to_igw" {
-  count  = var.firewall_type == "none" && var.internet_gateway != "" ? 1 : 0
+  count  = var.internet_gateway != "" ? 1 : 0
   vpc_id = var.vpc.id
   route {
     cidr_block = "0.0.0.0/0"
@@ -83,7 +70,7 @@ resource "aws_route_table" "to_igw" {
 
 # Route from this subnet to internet
 resource "aws_route_table_association" "to_igw" {
-  count          = var.firewall_type == "none" && var.internet_gateway != "" ? var.az_count : 0
+  count          = var.internet_gateway != "" ? var.az_count : 0
   subnet_id      = aws_subnet.this[count.index].id
   route_table_id = aws_route_table.to_igw[0].id
 }
