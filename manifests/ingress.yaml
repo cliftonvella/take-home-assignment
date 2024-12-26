@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-ingress
+  annotations:
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'  # Only HTTPS
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-west-2:278539779729:certificate/ee4941cf-9421-4372-a02e-d8753d19d10e"
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-FS-1-2-Res-2020-10"
+    # Security headers
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      idle_timeout.timeout_seconds=60,
+      routing.http2.enabled=true,
+      deletion_protection.enabled=true
+    # CORS configuration if needed
+    alb.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    alb.ingress.kubernetes.io/cors-allow-methods: "GET, OPTIONS"
+    alb.ingress.kubernetes.io/cors-allow-origins: "*"  # Restrict this to specific domains in production
+    # Internal access restriction for /post endpoint
+    alb.ingress.kubernetes.io/conditions.post: '[{"field":"source-ip","sourceIpConfig":{"values":["10.130.0.0/21"]}}]'
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+      - path: /post
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80

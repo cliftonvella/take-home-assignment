@@ -21,10 +21,7 @@ resource "aws_subnet" "this" {
   cidr_block        = cidrsubnet(var.vpc.cidr_block, var.cidr_newbits, count.index + var.cidr_offset)
   availability_zone = data.aws_availability_zones.zone.names[count.index]
   vpc_id            = var.vpc.id
-
-  tags = {
-    Name = "${var.name}-${data.aws_availability_zones.zone.names[count.index]}"
-  }
+  tags = merge( { Name = "${var.name}-${data.aws_availability_zones.zone.names[count.index]}" }, var.extra_tags )
 }
 
 resource "aws_route_table_association" "this" {

@@ -19,6 +19,9 @@ module "lb_subnets_internal" {
   az_count     = var.az_count
   cidr_newbits = 5
   cidr_offset  = 0
+  extra_tags = {
+    "kubernetes.io/role/internal-elb" = "1"
+  }
 }
 
 module "lb_subnets" {
@@ -28,6 +31,9 @@ module "lb_subnets" {
   az_count     = var.az_count
   cidr_newbits = 5
   cidr_offset  = 3
+  extra_tags = {
+    "kubernetes.io/role/elb" = "1"
+  }
 }
 
 resource "aws_route_table" "public_lb" {
@@ -66,7 +72,7 @@ resource "aws_route_table_association" "internal_lb" {
   route_table_id = aws_route_table.internal_lb.id
 }
 
-############# NATed Subnets #############
+############# NAT GW Subnets #############
 
 module "nat_subnets" {
   source       = "./modules/subnet"
@@ -99,3 +105,33 @@ resource "aws_route_table_association" "nats" {
   subnet_id      = module.nat_subnets.subnets[count.index].id
 }
 
+############# PRIVATE SUBNETS #############
+module "private_subnets" {
+  source                  = "./modules/subnet"
+  vpc                     = module.vpc.vpc
+  name                    = "private-${var.account}-${var.env}"
+  az_count                = var.az_count
+  cidr_newbits            = 5
+  cidr_offset             = 9
+}
+
+#Create route table for private subnet
+resource "aws_route_table" "private" {
+  vpc_id = module.vpc.vpc.id
+  count = var.az_count
+
+  route {
+    cidr_block         = "0.0.0.0/0"
+    nat_gateway_id     = module.nat_subnets.nats[count.index].id
+  }
+  
+  tags = {
+    Name = "private-${var.env}"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count          = var.az_count
+  route_table_id = aws_route_table.private[count.index].id
+  subnet_id      = module.private_subnets.subnets[count.index].id
+}

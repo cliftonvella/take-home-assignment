@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin
+spec:
+  type: ClusterIP  # Internal service type since ALB will handle external access
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: httpbin

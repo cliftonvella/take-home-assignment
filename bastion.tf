@@ -27,23 +27,23 @@ resource "aws_eip" "bastion" {
   domain   = "vpc"
 }
 
-# Make a public dns record for the bastion(s)
-resource "aws_route53_record" "bastion_public" {
-  name    = "bastion"
-  type    = "A"
-  ttl     = 60
-  records = aws_instance.bastion[*].public_ip
-  zone_id = aws_route53_zone.sandbox-public.zone_id
-}
+# # Make a public dns record for the bastion(s)
+# resource "aws_route53_record" "bastion_public" {
+#   name    = "bastion"
+#   type    = "A"
+#   ttl     = 60
+#   records = aws_instance.bastion[*].public_ip
+#   zone_id = aws_route53_zone.sandbox-public.zone_id
+# }
 
-resource "aws_route53_record" "bastion_public_instance" {
-  count   = var.az_count
-  name    = "bastion-${count.index}"
-  type    = "A"
-  ttl     = 60
-  records = [aws_instance.bastion[count.index].public_ip]
-  zone_id = aws_route53_zone.sandbox-public.zone_id
-}
+# resource "aws_route53_record" "bastion_public_instance" {
+#   count   = var.az_count
+#   name    = "bastion-${count.index}"
+#   type    = "A"
+#   ttl     = 60
+#   records = [aws_instance.bastion[count.index].public_ip]
+#   zone_id = aws_route53_zone.sandbox-public.zone_id
+# }
 
 resource "aws_security_group" "bastion_ec2_public" {
   name   = "bastion-public-${var.env}-${var.instance}"

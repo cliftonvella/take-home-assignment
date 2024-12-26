@@ -8,6 +8,12 @@ variable "instance" {
   description = "The instance of the infra e.g. gib"
 }
 
+variable "plan_only" {
+  type        = bool
+  description = "Plan only"
+  default     = false 
+}
+
 variable "aws_account_id" {
   type        = string
   description = "The AWS Account ID"
@@ -35,16 +41,6 @@ variable "az_count" {
 variable "env" {
   type    = string
   default = "dev"
-}
-
-variable "plan_only" {
-  type    = bool
-  default = false
-}
-
-variable "assume_role_name" {
-  type    = string
-  default = "SGTerraformSpokeAccounts"
 }
 
 variable "env_alias" {
