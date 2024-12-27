@@ -11,7 +11,7 @@ variable "instance" {
 variable "plan_only" {
   type        = bool
   description = "Plan only"
-  default     = false 
+  default     = false
 }
 
 variable "aws_account_id" {
@@ -51,7 +51,10 @@ variable "env_alias" {
     "dev"   = "dev"
   }
 }
-
+variable "assume_role_name" {
+  type    = string
+  default = "SGTerraformSpokeAccounts"
+}
 variable "instance_types" {
   description = "A list of instance types by application"
   default     = ({})

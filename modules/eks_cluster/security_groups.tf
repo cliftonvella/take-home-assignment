@@ -1,10 +1,10 @@
-resource "aws_security_group" "alb" {
+resource "aws_security_group" "alb_public" {
   name        = "alb-${var.cluster_name}-${var.env}-${var.instance}"
   description = "For ${var.cluster_name} load balancer"
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
-    for_each = var.alb_ingress_sg_rules
+    for_each = var.alb_public_ingress_sg_rules
     iterator = rule
     content {
       from_port       = rule.value.from_port
@@ -17,7 +17,40 @@ resource "aws_security_group" "alb" {
   }
 
   dynamic "egress" {
-    for_each = var.alb_egress_sg_rules
+    for_each = var.alb_public_egress_sg_rules
+    iterator = rule
+    content {
+      from_port   = rule.value.from_port
+      to_port     = rule.value.to_port
+      protocol    = rule.value.protocol
+      cidr_blocks = rule.value.cidr_blocks
+      description = rule.value.description
+    }
+  }
+
+  lifecycle { create_before_destroy = true }
+}
+
+resource "aws_security_group" "alb_internal" {
+  name        = "alb-${var.cluster_name}-${var.env}-${var.instance}"
+  description = "For ${var.cluster_name} load balancer"
+  vpc_id      = var.vpc_id
+
+  dynamic "ingress" {
+    for_each = var.alb_internal_ingress_sg_rules
+    iterator = rule
+    content {
+      from_port       = rule.value.from_port
+      to_port         = rule.value.to_port
+      protocol        = rule.value.protocol
+      cidr_blocks     = rule.value.cidr_blocks
+      security_groups = rule.value.security_groups
+      description     = rule.value.description
+    }
+  }
+
+  dynamic "egress" {
+    for_each = var.alb_internal_egress_sg_rules
     iterator = rule
     content {
       from_port   = rule.value.from_port

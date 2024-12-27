@@ -1,39 +1,37 @@
 data "aws_availability_zones" "zone" {}
 
 data "aws_key_pair" "key" {
-  key_name = "clif-sandbox-master"
+  key_name = "clif-eks-test-master"
 }
 
 resource "aws_instance" "bastion" {
-  count                       = var.az_count
   ami                         = lookup(var.ami_ids, "bastion", null)
   instance_type               = lookup(var.instance_types, "bastion", var.default_instance_type)
-  availability_zone           = data.aws_availability_zones.zone.names[count.index]
-  subnet_id                   = module.lb_subnets.subnets[count.index].id
+  availability_zone           = data.aws_availability_zones.zone.names[0]
+  subnet_id                   = module.lb_subnets.subnets[0].id
   associate_public_ip_address = "true"
   key_name                    = data.aws_key_pair.key.key_name
   vpc_security_group_ids      = [aws_security_group.bastion_ec2_public.id]
   iam_instance_profile        = aws_iam_instance_profile.bastion.name
 
   tags = {
-    Name = "bastion-${var.env_alias[var.env]}-${data.aws_availability_zones.zone.names[count.index]}"
+    Name = "bastion-${var.env_alias[var.env]}-${data.aws_availability_zones.zone.names[0]}"
   }
 }
 
 #Static IP for bastions
-resource "aws_eip" "bastion" {
-  count    = length(aws_instance.bastion)
-  instance = aws_instance.bastion[count.index].id
-  domain   = "vpc"
-}
+# resource "aws_eip" "bastion" {
+#   instance = aws_instance.bastion.id
+#   domain   = "vpc"
+# }
 
-# # Make a public dns record for the bastion(s)
+# Make a public dns record for the bastion(s)
 # resource "aws_route53_record" "bastion_public" {
-#   name    = "bastion"
+#   name    = "bastion-eks-test"
 #   type    = "A"
 #   ttl     = 60
-#   records = aws_instance.bastion[*].public_ip
-#   zone_id = aws_route53_zone.sandbox-public.zone_id
+#   records = aws_instance.bastion.public_ip
+#   zone_id = data.aws_route53_zone.ogs-dev-public.zone_id
 # }
 
 # resource "aws_route53_record" "bastion_public_instance" {
@@ -58,11 +56,11 @@ resource "aws_security_group" "bastion_ec2_public" {
   }
 
   egress {
-    cidr_blocks = [module.cidr.cidr_blocks[var.instance]["sandbox"][var.env]]
+    cidr_blocks = [module.cidr.cidr_blocks[var.instance]["eks-test"][var.env]]
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    description = "Access to machines in sandbox ${var.env} VPC"
+    description = "Access to machines in k8s-test VPC"
   }
 
   egress {

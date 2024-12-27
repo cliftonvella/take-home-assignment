@@ -41,8 +41,8 @@ variable "eks_version" {
   type        = string
 }
 
-variable "alb_ingress_sg_rules" {
-  description = "ALB security group ingress rules"
+variable "alb_public_ingress_sg_rules" {
+  description = "Public ALB security group ingress rules"
   type = list(object({
     cidr_blocks     = optional(list(string))
     security_groups = optional(list(string))
@@ -54,8 +54,33 @@ variable "alb_ingress_sg_rules" {
   default = []
 }
 
-variable "alb_egress_sg_rules" {
-  description = "ALB security group egress rules"
+variable "alb_public_egress_sg_rules" {
+  description = "Public ALB security group egress rules"
+  type = list(object({
+    cidr_blocks = list(string)
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    description = string
+  }))
+  default = []
+}
+
+variable "alb_internal_ingress_sg_rules" {
+  description = "Internal ALB security group ingress rules"
+  type = list(object({
+    cidr_blocks     = optional(list(string))
+    security_groups = optional(list(string))
+    from_port       = number
+    to_port         = number
+    protocol        = string
+    description     = string
+  }))
+  default = []
+}
+
+variable "alb_internal_egress_sg_rules" {
+  description = "Internal ALB security group egress rules"
   type = list(object({
     cidr_blocks = list(string)
     from_port   = number

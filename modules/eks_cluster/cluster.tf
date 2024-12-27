@@ -99,6 +99,12 @@ resource "aws_eks_node_group" "main" {
   #   ec2_ssh_key               = var.ssh_key_name  # Optional: for SSH access
   #   source_security_group_ids = [aws_security_group.node_group.id]
   # }
+  
+  # Add labels for cluster autoscaler
+  labels = {
+    "cluster-autoscaler/enabled" = "true"
+    "cluster-autoscaler/${aws_eks_cluster.main.name}" = "owned"
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,

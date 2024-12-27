@@ -1,6 +1,6 @@
-project = "takehome-assignment"
+project = "eks-test"
 
-aws_account_id = "278539779729"
+aws_account_id = "567863549671"
 
 az_count = 3
 
@@ -10,6 +10,6 @@ instance_types = {}
 
 #list of AMIs that are currently being used
 ami_ids = {
-  "bastion" : "ami-019374baf467d6601"
+  "bastion" : "ami-0e54671bdf3c8ed8d"
 }
 

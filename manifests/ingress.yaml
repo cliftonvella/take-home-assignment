@@ -7,7 +7,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: "internet-facing"
     alb.ingress.kubernetes.io/target-type: "ip"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'  # Only HTTPS
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-west-2:278539779729:certificate/ee4941cf-9421-4372-a02e-d8753d19d10e"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:567863549671:certificate/b9c49791-8160-4060-99e8-29cdccd51838"
     alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-FS-1-2-Res-2020-10"
     # Security headers
     alb.ingress.kubernetes.io/load-balancer-attributes: |

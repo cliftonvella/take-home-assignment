@@ -2,8 +2,8 @@
 # These are added in some dns forwarded configuration in SE1
 output "cidr_blocks" {
   value = {
-    "lon" = {
-      "sandbox" = {
+    "fft" = {
+      "eks-test" = {
         "dev" = "10.130.0.0/21"
       }
     }

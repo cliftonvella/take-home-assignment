@@ -1,5 +1,5 @@
 TERRAFORM ?= terraform
-STATE_BUCKET ?= cliftest-tfstate-sandbox-master
+STATE_BUCKET ?= cliftest-tfstate-fft-master
 PLAN_ONLY ?= false
 DETAILED_EXIT_CODE ?= false
 EXIT_CODE_OPTION =
