@@ -29,7 +29,7 @@ variable "private_dns" {
   default     = ""
 }
 
-variable "enable_dns_hostnames"{
+variable "enable_dns_hostnames" {
   description = "Set the enable_dns_hostnames attribute"
   type        = bool
   default     = false

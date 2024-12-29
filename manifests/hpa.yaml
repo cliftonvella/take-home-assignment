@@ -1,30 +1,45 @@
-# Horizontal Pod Autoscaler
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: httpbin-hpa
+ name: httpbin-hpa
 spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: httpbin
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 60
-    scaleDown:
-      stabilizationWindowSeconds: 300
+ scaleTargetRef:
+   apiVersion: apps/v1
+   kind: Deployment 
+   name: httpbin # Target the httpbin Deployment
+ minReplicas: 3 # Never scale below 3 pods 
+ maxReplicas: 10 # Never scale above 10 pods 
+ metrics: # What metrics to watch for scaling decisions
+ - type: Resource
+   resource:
+     name: cpu
+     target:
+       type: Utilization
+       averageUtilization: 70 # Scale if CPU usage across pods averages > 70%
+ - type: Resource
+   resource:
+     name: memory
+     target:
+       type: Utilization
+       averageUtilization: 80 # Scale if memory usage across pods averages > 80%
+ behavior:
+   scaleUp:
+     stabilizationWindowSeconds: 60 # Wait 1 minute between scaling up actions
+     selectPolicy: Max # Use whichever policy allows the largest scaling up action
+     policies:
+     - type: Pods
+       value: 4 # Scale up to 4 pods at a time
+       periodSeconds: 60
+     - type: Percent
+       value: 100
+       periodSeconds: 60
+   scaleDown:
+     stabilizationWindowSeconds: 300 # Wait 5 minutes between scaling down actions
+     selectPolicy: Min # Use whichever policy allows the smallest scaling action
+     policies:
+     - type: Pods
+       value: 1
+       periodSeconds: 60
+     - type: Percent
+       value: 10
+       periodSeconds: 60

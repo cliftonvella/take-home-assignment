@@ -12,7 +12,7 @@ resource "aws_kms_key" "eks" {
 # Launch Template for EKS Nodes
 resource "aws_launch_template" "eks_nodes" {
   name_prefix   = "eks-node-group"
-  instance_type = "t3.medium"
+  instance_type = var.node_group_instance_type
 
   metadata_options {
     http_endpoint               = "enabled"
@@ -29,8 +29,8 @@ resource "aws_launch_template" "eks_nodes" {
 
     ebs {
       volume_size           = 20
-      volume_type          = "gp3"
-      encrypted            = true
+      volume_type           = "gp3"
+      encrypted             = true
       delete_on_termination = true
     }
   }
@@ -52,10 +52,10 @@ resource "aws_eks_cluster" "main" {
   version  = var.eks_version
 
   vpc_config {
-    subnet_ids         = var.subnet_ids
-    security_group_ids = [aws_security_group.eks_cluster.id]
-    endpoint_private_access = true
-    endpoint_public_access  = true # Required for kubectl to work remotely
+    subnet_ids              = var.subnet_ids
+    security_group_ids      = [aws_security_group.eks_cluster.id]
+    endpoint_private_access = true  # Required for kubectl to from within the VPC
+    endpoint_public_access  = false # Required for kubectl to work remotely
   }
 
   # Enable encryption for secrets using the KMS key
@@ -65,8 +65,8 @@ resource "aws_eks_cluster" "main" {
     }
     resources = ["secrets"]
   }
-  
-  # enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_policy
@@ -99,10 +99,10 @@ resource "aws_eks_node_group" "main" {
   #   ec2_ssh_key               = var.ssh_key_name  # Optional: for SSH access
   #   source_security_group_ids = [aws_security_group.node_group.id]
   # }
-  
+
   # Add labels for cluster autoscaler
   labels = {
-    "cluster-autoscaler/enabled" = "true"
+    "cluster-autoscaler/enabled"                      = "true"
     "cluster-autoscaler/${aws_eks_cluster.main.name}" = "owned"
   }
 

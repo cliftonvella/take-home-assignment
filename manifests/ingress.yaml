@@ -1,40 +1,57 @@
+# Public Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: httpbin-ingress
+  name: httpbin-public
   annotations:
-    kubernetes.io/ingress.class: "alb"
-    alb.ingress.kubernetes.io/scheme: "internet-facing"
-    alb.ingress.kubernetes.io/target-type: "ip"
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'  # Only HTTPS
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:567863549671:certificate/b9c49791-8160-4060-99e8-29cdccd51838"
-    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-FS-1-2-Res-2020-10"
-    # Security headers
-    alb.ingress.kubernetes.io/load-balancer-attributes: |
-      idle_timeout.timeout_seconds=60,
-      routing.http2.enabled=true,
-      deletion_protection.enabled=true
-    # CORS configuration if needed
-    alb.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
-    alb.ingress.kubernetes.io/cors-allow-methods: "GET, OPTIONS"
-    alb.ingress.kubernetes.io/cors-allow-origins: "*"  # Restrict this to specific domains in production
-    # Internal access restriction for /post endpoint
-    alb.ingress.kubernetes.io/conditions.post: '[{"field":"source-ip","sourceIpConfig":{"values":["10.130.0.0/21"]}}]'
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: <your-certificate-arn>  # Replace with actual ACM-issued certificate ARN
+    alb.ingress.kubernetes.io/security-groups: <your-security-group-id>  # Replace with actual external ALB SG ID
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-FS-1-2-Res-2020-10
+    alb.ingress.kubernetes.io/subnets: <subnet-id-1>,<subnet-id-2>,<subnet-id-3> # Replace with actual external LB subnet IDs
+    alb.ingress.kubernetes.io/load-balancer-name: httpbin-public
+    alb.ingress.kubernetes.io/group.name: httpbin
 spec:
   rules:
-  - http:
-      paths:
-      - path: /get
-        pathType: Exact
-        backend:
-          service:
-            name: httpbin
-            port:
-              number: 80
-      - path: /post
-        pathType: Exact
-        backend:
-          service:
-            name: httpbin
-            port:
-              number: 80
+    - host: app.<your-public-domain>  # Replace with actual R53 public zone name
+      http:
+        paths:
+          - path: /get
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin-public
+                port:
+                  number: 80
+
+---
+
+# Internal Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin-internal
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/security-groups: <your-internal-sg-id>  # Replace with actual internal ALB SG ID
+    alb.ingress.kubernetes.io/subnets: <internal-subnet-id-1>,<internal-subnet-id-2>,<internal-subnet-id-3>  # Replace with actual internal LB subnet IDs
+    alb.ingress.kubernetes.io/load-balancer-name: httpbin-internal
+    alb.ingress.kubernetes.io/group.name: httpbin
+spec:
+  rules:
+    - host: app.<your-internal-domain>  # Replace with actual R53 PHZ name
+      http:
+        paths:
+          - path: /post
+            pathType: Exact
+            backend:
+              service:
+                name: httpbin-internal
+                port:
+                  number: 80

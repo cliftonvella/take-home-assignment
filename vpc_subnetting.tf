@@ -50,14 +50,12 @@ resource "aws_route_table" "public_lb" {
   depends_on = [module.lb_subnets]
 }
 
-#Associate public LB subnets with above route table
 resource "aws_route_table_association" "public_lb" {
   count          = var.az_count
   subnet_id      = module.lb_subnets.subnets[count.index].id
   route_table_id = aws_route_table.public_lb.id
 }
 
-#Create route tables for internal lb subnets
 resource "aws_route_table" "internal_lb" {
   vpc_id = module.vpc.vpc.id
 
@@ -67,7 +65,6 @@ resource "aws_route_table" "internal_lb" {
   depends_on = [module.lb_subnets_internal]
 }
 
-#Associate internal LB subnets with above route table
 resource "aws_route_table_association" "internal_lb" {
   count          = var.az_count
   subnet_id      = module.lb_subnets_internal.subnets[count.index].id
@@ -86,7 +83,6 @@ module "nat_subnets" {
   cidr_offset  = 18
 }
 
-## send non local traffic to the internet
 resource "aws_route_table" "nat" {
   count  = var.az_count
   vpc_id = module.vpc.vpc.id
@@ -107,7 +103,8 @@ resource "aws_route_table_association" "nats" {
   subnet_id      = module.nat_subnets.subnets[count.index].id
 }
 
-############# PRIVATE SUBNETS #############
+############# Private Subnets #############
+
 module "private_subnets" {
   source       = "./modules/subnet"
   vpc          = module.vpc.vpc
@@ -117,14 +114,13 @@ module "private_subnets" {
   cidr_offset  = 9
 }
 
-#Create route table for private subnet
 resource "aws_route_table" "private" {
   vpc_id = module.vpc.vpc.id
   count  = var.az_count
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = module.nat_subnets.nats[count.index].id
+    nat_gateway_id = module.nat_subnets.nat_gws[count.index].id
   }
 
   tags = {

@@ -13,7 +13,7 @@ variable "cluster_name" {
 
 variable "aws_region" {
   description = "Deployment region"
-  type = string 
+  type        = string
 }
 
 variable "node_group_name" {
@@ -28,7 +28,7 @@ variable "subnet_ids" {
 
 variable "vpc_id" {
   description = "Value of the VPC ID"
-  type = string
+  type        = string
 }
 
 variable "ssh_key_name" {
@@ -155,8 +155,11 @@ variable "scaling_config_min_size" {
   description = "The minimum number of worker nodes"
   type        = number
 }
-
 variable "max_unavailable_nodes" {
   description = "The maximum number of unavailable nodes"
   type        = number
+}
+variable "node_group_instance_type" {
+  description = "The instance type for the EKS node group"
+  type        = string
 }

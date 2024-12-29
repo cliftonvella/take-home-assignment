@@ -20,7 +20,7 @@ resource "aws_iam_role" "eks_cluster" {
   })
 
   tags = {
-    Name = "eks-cluster-role"
+    Name    = "eks-cluster-role"
     Purpose = "Allows EKS service to manage cluster resources"
   }
 }
@@ -49,7 +49,7 @@ resource "aws_iam_role" "eks_nodes" {
   })
 
   tags = {
-    Name = "eks-node-group-role"
+    Name    = "eks-node-group-role"
     Purpose = "Allows EKS worker nodes to manage containers and networking"
   }
 }
@@ -89,14 +89,14 @@ resource "aws_iam_role" "cluster_autoscaler" {
         }
         Condition = {
           StringEquals = {
-            "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:sub": "system:serviceaccount:kube-system:cluster-autoscaler"
+            "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:sub" : "system:serviceaccount:kube-system:cluster-autoscaler"
           }
         }
       }
     ]
   })
 
-  depends_on = [ aws_eks_cluster.main ]
+  depends_on = [aws_eks_cluster.main]
 }
 
 # IAM policy for Cluster Autoscaler
@@ -229,6 +229,52 @@ resource "aws_iam_role_policy" "aws_load_balancer_controller" {
           "elasticloadbalancing:ModifyRule"
         ]
         Resource = "*"
+      }
+    ]
+  })
+}
+
+# IAM role for Fluent Bit to access CloudWatch
+resource "aws_iam_role" "fluent_bit" {
+  name = "eks-fluent-bit"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect = "Allow"
+      Principal = {
+        Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}"
+      }
+      Condition = {
+        StringEquals = {
+          "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:sub" : "system:serviceaccount:default:fluent-bit"
+        }
+      }
+    }]
+  })
+}
+
+# IAM policy for CloudWatch access from Fluent-Bit
+resource "aws_iam_role_policy" "fluent_bit_cloudwatch" {
+  name = "eks-fluent-bit-cloudwatch"
+  role = aws_iam_role.fluent_bit.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+          "logs:DescribeLogGroups"
+        ]
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/eks/${var.cluster_name}/*"
+        ]
       }
     ]
   })

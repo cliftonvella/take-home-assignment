@@ -8,11 +8,19 @@ resource "kubernetes_deployment" "httpbin" {
   }
 
   spec {
-    replicas = 3
+    replicas = 3 # Increased to 3 replicas for better redundancy
 
     selector {
       match_labels = {
         app = "httpbin"
+      }
+    }
+
+    strategy {
+      type = "RollingUpdate"
+      rolling_update {
+        max_surge       = 1 # Allow one additional pod to be created during a rolling update
+        max_unavailable = 0 # Don't allow any pods to be unavailable during a rolling update
       }
     }
 
@@ -33,17 +41,17 @@ resource "kubernetes_deployment" "httpbin" {
           }
 
           resources {
-            requests = {
+            requests = { # Minimum resources guaranteed to a container
               cpu    = "200m"
               memory = "256Mi"
             }
-            limits = {
-              cpu    = "500m"
-              memory = "512Mi"
+            limits = {         # Maximum resources a container can use
+              cpu    = "500m"  # Throttle the CPU usage if over 500m (0.5 cores)
+              memory = "512Mi" # Throttle, and then kill if the memory usage goes over 512Mi
             }
           }
 
-          liveness_probe {
+          liveness_probe { # Check if the container is alive and healthy. If it fails, the container is restarted
             http_get {
               path = "/get"
               port = 80
@@ -52,7 +60,7 @@ resource "kubernetes_deployment" "httpbin" {
             period_seconds        = 20
           }
 
-          readiness_probe {
+          readiness_probe { # Check if the container is ready to serve traffic. If it fails, the container is removed from the service
             http_get {
               path = "/get"
               port = 80
@@ -61,8 +69,95 @@ resource "kubernetes_deployment" "httpbin" {
             period_seconds        = 10
           }
         }
+        # Fluent Bit sidecar container
+        container {
+          name  = "fluent-bit"
+          image = "fluent/fluent-bit:1.9"
+
+          volume_mount {
+            name       = "varlog"
+            mount_path = "/var/log"
+            read_only  = true
+          }
+
+          volume_mount {
+            name       = "config"
+            mount_path = "/fluent-bit/etc/"
+            read_only  = true
+          }
+
+          env {
+            name  = "AWS_REGION"
+            value = var.aws_region
+          }
+        }
+
+        # Host path volume for container logs
+        volume {
+          name = "varlog"
+          host_path {
+            path = "/var/log"
+          }
+        }
+
+        # ConfigMap volume for Fluent Bit configuration
+        volume {
+          name = "config"
+          config_map {
+            name = kubernetes_config_map.fluent_bit.metadata[0].name
+          }
+        }
+        # Required IAM permissions for CloudWatch access
+        service_account_name = module.eks_cluster.fluentbit_service_account_name
       }
     }
+  }
+}
+
+# Fluent Bit ConfigMap
+resource "kubernetes_config_map" "fluent_bit" {
+  metadata {
+    name = "fluent-bit-config"
+  }
+
+  data = {
+    "fluent-bit.conf" = <<EOF
+[SERVICE]
+    Daemon Off
+    Flush 1
+    Log_Level info
+
+[INPUT]
+    Name tail
+    Path /var/log/containers/*.log
+    Parser docker
+    Tag kube.*
+    Refresh_Interval 5
+
+[FILTER]
+    Name kubernetes
+    Match kube.*
+    Merge_Log On
+    Keep_Log Off
+    K8S-Logging.Parser On
+    K8S-Logging.Exclude On
+
+[OUTPUT]
+    Name cloudwatch
+    Match kube.*
+    region ${var.aws_region}
+    log_group_name /eks/${var.cluster_name}/httpbin
+    log_stream_prefix container-
+    auto_create_group true
+EOF
+
+    "parsers.conf" = <<EOF
+[PARSER]
+    Name docker
+    Format json
+    Time_Key time
+    Time_Format %Y-%m-%dT%H:%M:%S.%L
+EOF
   }
 }
 
@@ -70,6 +165,10 @@ resource "kubernetes_deployment" "httpbin" {
 resource "kubernetes_service" "httpbin_public" {
   metadata {
     name = "httpbin-public"
+    labels = {
+      app    = kubernetes_deployment.httpbin.metadata[0].labels.app
+      access = "public"
+    }
   }
 
   spec {
@@ -77,7 +176,7 @@ resource "kubernetes_service" "httpbin_public" {
       app = kubernetes_deployment.httpbin.metadata[0].labels.app
     }
 
-    port {
+    port { # Traffic -> Service (port 80) -> Pod (target_port 80)
       port        = 80
       target_port = 80
       protocol    = "TCP"
@@ -89,6 +188,10 @@ resource "kubernetes_service" "httpbin_public" {
 resource "kubernetes_service" "httpbin_internal" {
   metadata {
     name = "httpbin-internal"
+    labels = {
+      app    = kubernetes_deployment.httpbin.metadata[0].labels.app
+      access = "internal"
+    }
   }
 
   spec {
@@ -96,7 +199,7 @@ resource "kubernetes_service" "httpbin_internal" {
       app = kubernetes_deployment.httpbin.metadata[0].labels.app
     }
 
-    port {
+    port { # Traffic -> Service (port 80) -> Pod (target_port 80)
       port        = 80
       target_port = 80
       protocol    = "TCP"
@@ -104,7 +207,7 @@ resource "kubernetes_service" "httpbin_internal" {
   }
 }
 
-# Public Ingress
+# Public Ingress - Deploys an internet-facing ALB which routes traffic to the /get endpoint of the httpbin service
 resource "kubernetes_ingress_v1" "httpbin_public" {
   metadata {
     name = "httpbin-public"
@@ -152,7 +255,7 @@ data "aws_lb" "ingress-public" {
   depends_on = [kubernetes_ingress_v1.httpbin_public]
 }
 
-# Route53 record
+# Route53 record for the ALB on the R53 public zone
 resource "aws_route53_record" "app-public" {
   zone_id = aws_route53_zone.eks-test-public.zone_id
   name    = "app"
@@ -165,7 +268,7 @@ resource "aws_route53_record" "app-public" {
   }
 }
 
-# Internal Ingress
+# Internal Ingress - Deploys an internal ALB which routes traffic to the /post endpoint of the httpbin service
 resource "kubernetes_ingress_v1" "httpbin_internal" {
   metadata {
     name = "httpbin-internal"
@@ -183,6 +286,7 @@ resource "kubernetes_ingress_v1" "httpbin_internal" {
 
   spec {
     rule {
+      host = "app.${module.vpc.phz.name}"
       http {
         path {
           path      = "/post"
@@ -210,7 +314,7 @@ data "aws_lb" "ingress-internal" {
   depends_on = [kubernetes_ingress_v1.httpbin_internal]
 }
 
-# Route53 record
+# Route53 record for the ALB on the private hosted zone
 resource "aws_route53_record" "app-internal" {
   zone_id = module.vpc.phz.id
   name    = "app"
@@ -220,5 +324,121 @@ resource "aws_route53_record" "app-internal" {
     name                   = data.aws_lb.ingress-internal.dns_name
     zone_id                = data.aws_lb.ingress-internal.zone_id
     evaluate_target_health = false
+  }
+}
+
+# Network Policy
+resource "kubernetes_network_policy" "httpbin" {
+  metadata {
+    name = "httpbin-network-policy"
+  }
+
+  spec {
+    pod_selector { # Select the pods to which this policy applies
+      match_labels = {
+        app = kubernetes_deployment.httpbin.metadata[0].labels.app
+      }
+    }
+
+    policy_types = ["Ingress"]
+
+    ingress {
+      from {
+        # Additional security layer at cluster level to allow access to the pods only from within the VPC 
+        ip_block {
+          cidr = module.vpc.vpc.cidr_block
+        }
+      }
+      ports {
+        port     = 80
+        protocol = "TCP"
+      }
+    }
+
+    # Allow traffic to /post endpoint only from internal namespaces
+    ingress {
+      from {
+        # This is a placeholder for a namespace selector, which can for example allow access to the httpbin pods only from pods in the selected namespaces
+        namespace_selector {
+          match_labels = {
+            environment = "internal"
+          }
+        }
+      }
+      ports {
+        port     = 80
+        protocol = "TCP"
+      }
+    }
+  }
+}
+
+resource "kubernetes_horizontal_pod_autoscaler_v2" "httpbin" {
+  metadata {
+    name = "httpbin-hpa"
+  }
+
+  spec {
+    scale_target_ref {
+      api_version = "apps/v1"
+      kind        = "Deployment"
+      name        = kubernetes_deployment.httpbin.metadata[0].name
+    }
+
+    min_replicas = 2
+    max_replicas = 10
+
+    metric {
+      type = "Resource"
+      resource {
+        name = "cpu"
+        target {
+          type                = "Utilization"
+          average_utilization = 70
+        }
+      }
+    }
+
+    metric {
+      type = "Resource"
+      resource {
+        name = "memory"
+        target {
+          type                = "Utilization"
+          average_utilization = 80
+        }
+      }
+    }
+
+    behavior {
+      scale_up {
+        stabilization_window_seconds = 60
+        select_policy                = "Max"
+        policy {
+          type           = "Pods"
+          value          = 4
+          period_seconds = 60
+        }
+        policy {
+          type           = "Percent"
+          value          = 100
+          period_seconds = 60
+        }
+      }
+      scale_down {
+        stabilization_window_seconds = 300
+        select_policy                = "Min"
+        policy {
+          type           = "Pods"
+          value          = 1
+          period_seconds = 60
+        }
+        policy {
+          type           = "Percent"
+          value          = 10
+          period_seconds = 60
+        }
+      }
+    }
   }
 }

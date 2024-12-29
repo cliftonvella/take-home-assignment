@@ -1,12 +1,32 @@
+# Public Service
 apiVersion: v1
 kind: Service
 metadata:
-  name: httpbin
+  name: httpbin-public
+  labels:
+    app: httpbin        
 spec:
-  type: ClusterIP  # Internal service type since ALB will handle external access
-  ports:
-  - port: 80
-    targetPort: 80
-    protocol: TCP
   selector:
-    app: httpbin
+    app: httpbin        
+  ports:
+    - port: 80          # Traffic -> Service (port 80) -> Pod (target_port 80)
+      targetPort: 80
+      protocol: TCP
+
+---
+
+# Internal Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-internal
+  labels:
+    app: httpbin        
+    access: internal
+spec:
+  selector:
+    app: httpbin       
+  ports:
+    - port: 80          # Traffic -> Service (port 80) -> Pod (target_port 80)
+      targetPort: 80
+      protocol: TCP

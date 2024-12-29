@@ -26,9 +26,9 @@ locals {
 # Configure the AWS Provider & set region
 provider "aws" {
   region = var.aws_region
-  assume_role {
-    role_arn = "arn:aws:iam::${var.aws_account_id}:role/${local.assume_role}"
-  }
+  # assume_role {
+  #   role_arn = "arn:aws:iam::${var.aws_account_id}:role/${local.assume_role}"
+  # }
   default_tags {
     tags = {
       OU          = var.ou
@@ -45,7 +45,7 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(module.eks_cluster.cluster_ca_certificate)
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
-    args        = ["eks", "get-token", "--cluster-name", "eks-test"]
+    args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
     command     = "aws"
   }
 }
@@ -59,14 +59,14 @@ provider "helm" {
     exec {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", "eks-test"]
+      args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
     }
   }
 }
 
 # Data source to get EKS cluster auth details
 data "aws_eks_cluster_auth" "cluster" {
-  name = "eks-test"
+  name = var.cluster_name
 }
 
 module "cidr" {

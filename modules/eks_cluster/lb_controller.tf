@@ -19,7 +19,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
-  version    = "1.6.0"  # Check for latest version
+  version    = "1.6.0" # Check for latest version
 
   set {
     name  = "clusterName"
@@ -28,7 +28,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "serviceAccount.create"
-    value = "false"  # We created the service account separately
+    value = "false" # We created the service account separately
   }
 
   set {

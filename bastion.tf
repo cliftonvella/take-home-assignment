@@ -5,50 +5,50 @@ data "aws_key_pair" "key" {
 }
 
 resource "aws_instance" "bastion" {
+  count                       = var.az_count
   ami                         = lookup(var.ami_ids, "bastion", null)
   instance_type               = lookup(var.instance_types, "bastion", var.default_instance_type)
-  availability_zone           = data.aws_availability_zones.zone.names[0]
-  subnet_id                   = module.lb_subnets.subnets[0].id
+  availability_zone           = data.aws_availability_zones.zone.names[count.index]
+  subnet_id                   = module.lb_subnets.subnets[count.index].id
   associate_public_ip_address = "true"
   key_name                    = data.aws_key_pair.key.key_name
   vpc_security_group_ids      = [aws_security_group.bastion_ec2_public.id]
   iam_instance_profile        = aws_iam_instance_profile.bastion.name
 
   tags = {
-    Name = "bastion-${var.env_alias[var.env]}-${data.aws_availability_zones.zone.names[0]}"
+    Name = "bastion-${var.env_alias[var.env]}-${data.aws_availability_zones.zone.names[count.index]}"
   }
 }
 
 #Static IP for bastions
-# resource "aws_eip" "bastion" {
-#   instance = aws_instance.bastion.id
-#   domain   = "vpc"
-# }
-
+resource "aws_eip" "bastion" {
+  count    = length(aws_instance.bastion)
+  instance = aws_instance.bastion[count.index].id
+  domain   = "vpc"
+}
 # Make a public dns record for the bastion(s)
-# resource "aws_route53_record" "bastion_public" {
-#   name    = "bastion-eks-test"
-#   type    = "A"
-#   ttl     = 60
-#   records = aws_instance.bastion.public_ip
-#   zone_id = data.aws_route53_zone.ogs-dev-public.zone_id
-# }
-
-# resource "aws_route53_record" "bastion_public_instance" {
-#   count   = var.az_count
-#   name    = "bastion-${count.index}"
-#   type    = "A"
-#   ttl     = 60
-#   records = [aws_instance.bastion[count.index].public_ip]
-#   zone_id = aws_route53_zone.sandbox-public.zone_id
-# }
+resource "aws_route53_record" "bastion_public" {
+  name    = "bastion"
+  type    = "A"
+  ttl     = 60
+  records = aws_instance.bastion[*].public_ip
+  zone_id = aws_route53_zone.eks-test-public.zone_id
+}
+resource "aws_route53_record" "bastion_public_instance" {
+  count   = var.az_count
+  name    = "bastion-${count.index}"
+  type    = "A"
+  ttl     = 60
+  records = [aws_instance.bastion[count.index].public_ip]
+  zone_id = aws_route53_zone.eks-test-public.zone_id
+}
 
 resource "aws_security_group" "bastion_ec2_public" {
   name   = "bastion-public-${var.env}-${var.instance}"
   vpc_id = module.vpc.vpc.id
 
   ingress {
-    cidr_blocks = var.ingress_allowed_cidrs
+    cidr_blocks = var.bastion_allowed_cidrs
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"

@@ -45,6 +45,6 @@ variable "route_table_association" {
 }
 variable "extra_tags" {
   description = "Extra tags to apply to the subnet"
-  type = map(any)
-  default = {}
+  type        = map(any)
+  default     = {}
 }

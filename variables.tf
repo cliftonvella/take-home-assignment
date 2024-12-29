@@ -51,10 +51,12 @@ variable "env_alias" {
     "dev"   = "dev"
   }
 }
+
 variable "assume_role_name" {
   type    = string
   default = "SGTerraformSpokeAccounts"
 }
+
 variable "instance_types" {
   description = "A list of instance types by application"
   default     = ({})
@@ -72,15 +74,22 @@ variable "ami_ids" {
 }
 
 variable "ingress_allowed_cidrs" {
-  type = list(string)
-  default = [
-    "185.145.77.2/32"
-  ]
+  description = "List of allowed IPs able to access public ALBs"
+  type        = list(string)
 }
 
-variable "cloudwatch_alarms_enabled" {
-  description = "Cloudwatch alarms toggle"
-  type        = bool
-  default     = false
+variable "bastion_allowed_cidrs" {
+  description = "List of allowed IPs able to SSH to the bastion hosts"
+  type        = list(string)
+}
+
+variable "cluster_name" {
+  description = "The name of the EKS cluster"
+  type        = string
+}
+
+variable "cluster_version" {
+  description = "The version of the EKS cluster"
+  type        = string
 }
 

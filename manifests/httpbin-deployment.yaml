@@ -2,12 +2,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: httpbin
-  namespace: default
+  labels:
+    app: httpbin
 spec:
-  replicas: 2
+  replicas: 3  # Increased to 3 replicas for better redundancy
   selector:
     matchLabels:
       app: httpbin
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Allow one additional pod to be created during a rolling update
+      maxUnavailable: 0   # Don't allow any pods to be unavailable during a rolling update
   template:
     metadata:
       labels:
@@ -16,12 +22,46 @@ spec:
       containers:
       - name: httpbin
         image: kennethreitz/httpbin
-        resources:
-          requests:
-            cpu: "200m"
-            memory: "256Mi"
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
         ports:
         - containerPort: 80
+        resources:
+          requests:    # Minimum resources guaranteed to a container
+            cpu: "200m"
+            memory: "256Mi"
+          limits:      # Maximum resources a container can use
+            cpu: "500m"     # Throttle the CPU usage if over 500m (0.5 cores)
+            memory: "512Mi" # Throttle, and then kill if the memory usage goes over 512Mi
+        livenessProbe:  # Check if the container is alive and healthy. If it fails, the container is restarted
+          httpGet:
+            path: /get
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:  # Check if the container is ready to serve traffic. If it fails, the container is removed from the service
+          httpGet:
+            path: /get
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      - name: fluent-bit
+        image: fluent/fluent-bit:latest
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: config
+          mountPath: /fluent-bit/etc/
+          readOnly: true
+        env:
+        - name: AWS_REGION
+          value: eu-central-1  # Replace with the actual deployment region
+      
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: config
+        configMap:
+          name: fluent-bit-config
+      
+      serviceAccountName: fluent-bit # Replace with the actual service account name

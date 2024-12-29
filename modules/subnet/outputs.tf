@@ -2,6 +2,6 @@ output "subnets" {
   value = aws_subnet.this
 }
 
-output "nats" {
+output "nat_gws" {
   value = var.nat_required ? aws_nat_gateway.outbound : []
 }

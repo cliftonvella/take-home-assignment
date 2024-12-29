@@ -90,14 +90,15 @@ locals {
 module "eks_cluster" {
   source = "./modules/eks_cluster"
 
-  cluster_name                  = "eks-test"
+  cluster_name                  = var.cluster_name
   node_group_name               = "eks-test-node-group"
-  eks_version                   = "1.31"
+  eks_version                   = var.cluster_version
   vpc_id                        = module.vpc.vpc.id
   env                           = var.env
   instance                      = var.instance
   aws_region                    = var.aws_region
   subnet_ids                    = module.private_subnets.subnets[*].id
+  node_group_instance_type      = lookup(var.instance_types, "eks_node_group", var.default_instance_type)
   ssh_key_name                  = data.aws_key_pair.key.key_name
   alb_public_ingress_sg_rules   = local.alb_public_ingress_sg_rules
   alb_public_egress_sg_rules    = local.alb_public_egress_sg_rules
@@ -107,8 +108,9 @@ module "eks_cluster" {
   cluster_egress_sg_rules       = local.cluster_egress_sg_rules
   nodegroup_ingress_sg_rules    = local.nodegroup_ingress_sg_rules
   nodegroup_egress_sg_rules     = local.nodegroup_egress_sg_rules
-  scaling_config_desired_size   = 2
-  scaling_config_max_size       = 3
-  scaling_config_min_size       = 1
-  max_unavailable_nodes         = 1
+  # Node group scaling configuration
+  scaling_config_desired_size = 2
+  scaling_config_max_size     = 3
+  scaling_config_min_size     = 1
+  max_unavailable_nodes       = 1
 }

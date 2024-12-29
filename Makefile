@@ -1,19 +1,9 @@
 TERRAFORM ?= terraform
 STATE_BUCKET ?= cliftest-tfstate-fft-master
 PLAN_ONLY ?= false
-DETAILED_EXIT_CODE ?= false
-EXIT_CODE_OPTION =
 
 PLAN_FILE = $(INSTANCE)_$(OU)_$(ACCOUNT)_$(ENV).plan
 VAR_FILE = $(INSTANCE)_$(ACCOUNT)_$(ENV).tfvars
-
-# Exit code will be 2 is there are changes to apply
-$(info Detailed exit code request: $(DETAILED_EXIT_CODE))
-ifeq (true, $(DETAILED_EXIT_CODE))
-  $(info Detailed exit code evaluated: $(DETAILED_EXIT_CODE))
-  EXIT_CODE_OPTION = -detailed-exitcode
-endif
-$(info Exit code result: $(EXIT_CODE_OPTION))
 
 init:
 	@echo "running terraform init $(INSTANCE)"
@@ -42,7 +32,7 @@ plan: workspace
 		-var='account=$(ACCOUNT)' \
 		-var='env=$(ENV)' \
 		-var='aws_region=$(AWS_REGION)' \
-		-out=$(PLAN_FILE) $(EXIT_CODE_OPTION)
+		-out=$(PLAN_FILE)
 
 console: workspace
 	@echo "running terraform console"
