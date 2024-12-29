@@ -54,7 +54,7 @@ variable "env_alias" {
 
 variable "assume_role_name" {
   type    = string
-  default = "SGTerraformSpokeAccounts"
+  default = "TerraformDeploy"
 }
 
 variable "instance_types" {
